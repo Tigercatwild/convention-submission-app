@@ -18,7 +18,40 @@ export default function OrganizationsPage() {
     try {
       console.log('Loading organizations...')
       
-      // Add timeout to the fetch request
+      // For local development, use mock data if API fails
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+          
+          const response = await fetch('/api/organizations', {
+            signal: controller.signal
+          })
+          
+          clearTimeout(timeoutId)
+          
+          if (response.ok) {
+            const data = await response.json()
+            if (Array.isArray(data) && data.length > 0) {
+              setOrganizations(data)
+              setLoading(false)
+              return
+            }
+          }
+        } catch (error) {
+          console.log('API failed, using mock data for development')
+        }
+        
+        // Use mock data for development
+        setOrganizations([
+          { id: '1', name: 'Sigma Kappa Delta', created_at: new Date().toISOString() },
+          { id: '2', name: 'Sigma Tau Delta', created_at: new Date().toISOString() }
+        ])
+        setLoading(false)
+        return
+      }
+      
+      // Production code
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
       

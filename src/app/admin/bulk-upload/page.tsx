@@ -60,17 +60,6 @@ export default function BulkUploadPage() {
     return members
   }
 
-  const findSchoolId = (schoolName: string, orgName: string) => {
-    const org = organizations.find(o => o.name.toLowerCase() === orgName.toLowerCase())
-    if (!org) return null
-    
-    const school = schools.find(s => 
-      s.name.toLowerCase() === schoolName.toLowerCase() && 
-      s.organization_id === org.id
-    )
-    return school?.id || null
-  }
-
   const handleUpload = async () => {
     if (!file) return
 
@@ -81,21 +70,13 @@ export default function BulkUploadPage() {
       const csvText = await file.text()
       const csvMembers = parseCSV(csvText)
       
-      const members = csvMembers.map(member => {
-        const schoolId = findSchoolId(member.school, member.organization)
-        const org = organizations.find(o => o.name.toLowerCase() === member.organization.toLowerCase())
-        
-        if (!schoolId || !org) {
-          throw new Error(`School "${member.school}" not found for organization "${member.organization}"`)
-        }
-        
-        return {
-          name: member.member_name,
-          school_id: schoolId,
-          organization_id: org.id,
-          submission_url: member.submission_url
-        }
-      })
+      // Convert to the new format that the API expects
+      const members = csvMembers.map(member => ({
+        organization_name: member.organization,
+        school_name: member.school,
+        member_name: member.member_name,
+        submission_url: member.submission_url
+      }))
 
       const response = await fetch('/api/members/bulk', {
         method: 'POST',

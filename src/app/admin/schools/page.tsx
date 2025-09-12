@@ -17,6 +17,43 @@ export default function SchoolsPage() {
 
   const loadData = async () => {
     try {
+      // For local development, use mock data if API fails
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const [schoolsResponse, orgsResponse] = await Promise.all([
+            fetch('/api/schools'),
+            fetch('/api/organizations')
+          ])
+          
+          const schoolsData = await schoolsResponse.json()
+          const orgsData = await orgsResponse.json()
+          
+          if (Array.isArray(schoolsData) && schoolsData.length > 0 && Array.isArray(orgsData) && orgsData.length > 0) {
+            setSchools(schoolsData)
+            setOrganizations(orgsData)
+            setLoading(false)
+            return
+          }
+        } catch (error) {
+          console.log('API failed, using mock data for development')
+        }
+        
+        // Use mock data for development
+        setOrganizations([
+          { id: '1', name: 'Sigma Kappa Delta', created_at: new Date().toISOString() },
+          { id: '2', name: 'Sigma Tau Delta', created_at: new Date().toISOString() }
+        ])
+        setSchools([
+          { id: '1', name: 'University of Alabama', organization_id: '1', created_at: new Date().toISOString() },
+          { id: '2', name: 'Auburn University', organization_id: '1', created_at: new Date().toISOString() },
+          { id: '3', name: 'University of Georgia', organization_id: '2', created_at: new Date().toISOString() },
+          { id: '4', name: 'Georgia Tech', organization_id: '2', created_at: new Date().toISOString() }
+        ])
+        setLoading(false)
+        return
+      }
+      
+      // Production code
       const [schoolsResponse, orgsResponse] = await Promise.all([
         fetch('/api/schools'),
         fetch('/api/organizations')
