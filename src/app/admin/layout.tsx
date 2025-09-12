@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import AdminSidebar from '@/components/AdminSidebar'
 
@@ -13,8 +13,18 @@ export default function AdminLayout({
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+
+  // Skip authentication for login page
+  const isLoginPage = pathname === '/admin/login'
 
   useEffect(() => {
+    // If we're on the login page, don't check authentication
+    if (isLoginPage) {
+      setLoading(false)
+      return
+    }
+
     const checkAuth = async () => {
       try {
         // For local development, skip authentication
@@ -51,7 +61,7 @@ export default function AdminLayout({
     }
 
     checkAuth()
-  }, [router])
+  }, [router, isLoginPage])
 
   if (loading) {
     return (
@@ -62,6 +72,11 @@ export default function AdminLayout({
         </div>
       </div>
     )
+  }
+
+  // For login page, render children directly without layout
+  if (isLoginPage) {
+    return <>{children}</>
   }
 
   if (!isAuthenticated) {
