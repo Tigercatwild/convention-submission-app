@@ -279,7 +279,7 @@ export default function Home() {
                         ) : (
                           <div>
                             <p className="text-gray-500 mb-4">
-                              No members found matching "{searchTerm}".
+                              No members found matching &quot;{searchTerm}&quot;.
                             </p>
                             <p className="text-sm text-gray-600 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                               If your name is not listed under your school, please contact your Advisor to confirm your WriteAway status.
