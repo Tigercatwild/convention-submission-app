@@ -120,7 +120,7 @@ export default function Home() {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              Convention Submission Portal
+            Membership Validation Portal for Convention Submission
             </h1>
             <p className="text-gray-600">
               Select your organization, school, and name to access your submission form
