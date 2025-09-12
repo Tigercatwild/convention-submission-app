@@ -64,8 +64,8 @@ export default function SchoolsPage() {
       
       setSchools(schoolsData)
       setOrganizations(orgsData)
-    } catch (error) {
-      console.error('Error loading data:', error)
+      } catch {
+        console.error('Error loading data')
     } finally {
       setLoading(false)
     }

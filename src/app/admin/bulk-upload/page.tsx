@@ -7,28 +7,9 @@ export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ success: number; errors: string[] } | null>(null)
-  const [schools, setSchools] = useState<School[]>([])
-  const [organizations, setOrganizations] = useState<Organization[]>([])
+  // Removed unused state variables since API now handles org/school creation
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [schoolsResponse, orgsResponse] = await Promise.all([
-          fetch('/api/schools'),
-          fetch('/api/organizations')
-        ])
-        
-        const schoolsData = await schoolsResponse.json()
-        const orgsData = await orgsResponse.json()
-        
-        setSchools(schoolsData)
-        setOrganizations(orgsData)
-      } catch (error) {
-        console.error('Error loading data:', error)
-      }
-    }
-    loadData()
-  }, [])
+  // No need to load data since API handles org/school creation automatically
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]

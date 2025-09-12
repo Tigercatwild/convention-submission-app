@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
       }
 
-      // Find or create organization
-      let { data: org, error: orgError } = await supabase
+        // Find or create organization
+        const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('id')
         .eq('name', member.organization_name)
@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: `Failed to find organization: ${orgError.message}` }, { status: 500 })
       }
 
-      // Find or create school
-      let { data: school, error: schoolError } = await supabase
+        // Find or create school
+        const { data: school, error: schoolError } = await supabase
         .from('schools')
         .select('id')
         .eq('name', member.school_name)

@@ -78,8 +78,8 @@ export default function OrganizationsPage() {
         console.error('Unexpected data format:', data)
         setOrganizations([])
       }
-    } catch (error) {
-      console.error('Error loading organizations:', error)
+      } catch {
+        console.error('Error loading organizations')
       setOrganizations([])
     } finally {
       setLoading(false)
