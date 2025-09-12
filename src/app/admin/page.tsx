@@ -38,7 +38,7 @@ export default function OrganizationsPage() {
               return
             }
           }
-        } catch (error) {
+        } catch {
           console.log('API failed, using mock data for development')
         }
         
@@ -78,8 +78,8 @@ export default function OrganizationsPage() {
         console.error('Unexpected data format:', data)
         setOrganizations([])
       }
-      } catch {
-        console.error('Error loading organizations')
+      } catch (error) {
+        console.error('Error loading organizations:', error)
       setOrganizations([])
     } finally {
       setLoading(false)

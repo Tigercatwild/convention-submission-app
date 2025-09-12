@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { School, Organization } from '@/lib/supabase'
+import { useState } from 'react'
+// Removed unused imports since API now handles org/school creation
 
 export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null)

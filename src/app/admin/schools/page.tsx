@@ -34,7 +34,7 @@ export default function SchoolsPage() {
             setLoading(false)
             return
           }
-        } catch (error) {
+        } catch {
           console.log('API failed, using mock data for development')
         }
         
@@ -64,8 +64,8 @@ export default function SchoolsPage() {
       
       setSchools(schoolsData)
       setOrganizations(orgsData)
-      } catch {
-        console.error('Error loading data')
+      } catch (error) {
+        console.error('Error loading data:', error)
     } finally {
       setLoading(false)
     }

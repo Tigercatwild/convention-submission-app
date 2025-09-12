@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
         .eq('name', member.organization_name)
         .single()
 
+      let finalOrg = org
       if (orgError && orgError.code === 'PGRST116') {
         // Organization doesn't exist, create it
         const { data: newOrg, error: createOrgError } = await supabase
@@ -39,9 +40,13 @@ export async function POST(request: NextRequest) {
         if (createOrgError) {
           return NextResponse.json({ error: `Failed to create organization: ${createOrgError.message}` }, { status: 500 })
         }
-        org = newOrg
+        finalOrg = newOrg
       } else if (orgError) {
         return NextResponse.json({ error: `Failed to find organization: ${orgError.message}` }, { status: 500 })
+      }
+
+      if (!finalOrg) {
+        return NextResponse.json({ error: 'Organization not found' }, { status: 500 })
       }
 
         // Find or create school
@@ -49,16 +54,17 @@ export async function POST(request: NextRequest) {
         .from('schools')
         .select('id')
         .eq('name', member.school_name)
-        .eq('organization_id', org.id)
+        .eq('organization_id', finalOrg.id)
         .single()
 
+      let finalSchool = school
       if (schoolError && schoolError.code === 'PGRST116') {
         // School doesn't exist, create it
         const { data: newSchool, error: createSchoolError } = await supabase
           .from('schools')
           .insert({ 
             name: member.school_name,
-            organization_id: org.id
+            organization_id: finalOrg.id
           })
           .select('id')
           .single()
@@ -66,15 +72,19 @@ export async function POST(request: NextRequest) {
         if (createSchoolError) {
           return NextResponse.json({ error: `Failed to create school: ${createSchoolError.message}` }, { status: 500 })
         }
-        school = newSchool
+        finalSchool = newSchool
       } else if (schoolError) {
         return NextResponse.json({ error: `Failed to find school: ${schoolError.message}` }, { status: 500 })
       }
 
+      if (!finalSchool) {
+        return NextResponse.json({ error: 'School not found' }, { status: 500 })
+      }
+
       processedMembers.push({
         name: member.member_name,
-        school_id: school.id,
-        organization_id: org.id,
+        school_id: finalSchool.id,
+        organization_id: finalOrg.id,
         submission_url: member.submission_url
       })
     }
