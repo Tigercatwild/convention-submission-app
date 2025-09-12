@@ -13,7 +13,7 @@ export default function AdminLogin() {
   const router = useRouter()
 
   // Debug: Log when component mounts
-  console.log('AdminLogin component mounted')
+  console.log('AdminLogin component mounted - ESLint fixes deployed')
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
