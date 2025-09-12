@@ -12,6 +12,9 @@ export default function AdminLogin() {
   const [error, setError] = useState('')
   const router = useRouter()
 
+  // Debug: Log when component mounts
+  console.log('AdminLogin component mounted')
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -55,6 +58,7 @@ export default function AdminLogin() {
     }
   }
 
+  // Always render something, even if there are errors
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
@@ -65,6 +69,12 @@ export default function AdminLogin() {
           <p className="text-gray-600">
             Sign in to access the admin dashboard
           </p>
+          {/* Debug info for development */}
+          {process.env.NODE_ENV === 'development' && (
+            <p className="text-xs text-gray-400 mt-2">
+              Development Mode: Enter any email/password
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSignIn} className="space-y-6">
