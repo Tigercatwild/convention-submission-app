@@ -18,6 +18,12 @@ export default function AdminLogin() {
     setError('')
 
     try {
+      // For local development, bypass authentication
+      if (process.env.NODE_ENV === 'development' && email === 'admin@example.com') {
+        router.push('/admin')
+        return
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

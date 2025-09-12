@@ -17,6 +17,13 @@ export default function AdminLayout({
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // For local development, skip authentication
+        if (process.env.NODE_ENV === 'development') {
+          setIsAuthenticated(true)
+          setLoading(false)
+          return
+        }
+
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user?.email) {
