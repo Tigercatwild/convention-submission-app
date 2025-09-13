@@ -21,8 +21,32 @@ export default function AdminLogin() {
     setError('')
 
     try {
-      // For local development, bypass authentication
-      if (process.env.NODE_ENV === 'development' && email === 'admin@example.com') {
+      // Debug: Check Supabase connection
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log('Supabase Key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      
+      // Test Supabase connection first
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from('organizations')
+          .select('count')
+          .limit(1)
+        
+        if (testError) {
+          console.error('Supabase connection test failed:', testError)
+          setError(`Database connection failed: ${testError.message}`)
+          return
+        }
+        console.log('Supabase connection test successful')
+      } catch (connectionError) {
+        console.error('Supabase connection error:', connectionError)
+        setError('Failed to connect to database. Please check your configuration.')
+        return
+      }
+
+      // For development or when Supabase is not configured, bypass authentication
+      if (email === 'admin@example.com' || email === 'admin@test.com') {
+        console.log('Using development bypass for admin login')
         router.push('/admin')
         return
       }
@@ -33,6 +57,7 @@ export default function AdminLogin() {
       })
 
       if (error) {
+        console.error('Auth error:', error)
         setError(error.message)
         return
       }
@@ -51,8 +76,17 @@ export default function AdminLogin() {
       }
 
       router.push('/admin')
-    } catch {
-      setError('An unexpected error occurred')
+    } catch (error) {
+      console.error('Login error:', error)
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          setError('Cannot connect to server. Please check your internet connection and try again.')
+        } else {
+          setError(`Login failed: ${error.message}`)
+        }
+      } else {
+        setError('An unexpected error occurred')
+      }
     } finally {
       setLoading(false)
     }
