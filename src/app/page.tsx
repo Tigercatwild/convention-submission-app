@@ -14,6 +14,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [organizationsLoading, setOrganizationsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [schoolSearchTerm, setSchoolSearchTerm] = useState('')
 
   // Load organizations on component mount
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function Home() {
 
   const handleOrgSelect = async (org: Organization) => {
     setSelectedOrg(org)
+    setSchoolSearchTerm('') // Clear school search when selecting new organization
     setLoading(true)
     try {
       const response = await fetch(`/api/schools?orgId=${org.id}`)
@@ -112,6 +114,12 @@ export default function Home() {
     ? [] 
     : members.filter(member =>
         member.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+
+  const filteredSchools = schoolSearchTerm.trim() === '' 
+    ? schools 
+    : schools.filter(school =>
+        school.name.toLowerCase().includes(schoolSearchTerm.toLowerCase())
       )
 
   return (
@@ -195,16 +203,45 @@ export default function Home() {
                     <p className="text-gray-500">No schools available for this organization.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {schools.map((school) => (
-                      <button
-                        key={school.id}
-                        onClick={() => handleSchoolSelect(school)}
-                        className="w-full p-4 text-left border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
-                      >
-                        <div className="font-medium text-gray-900">{school.name}</div>
-                      </button>
-                    ))}
+                  <div>
+                    <div className="mb-4">
+                      <input
+                        type="text"
+                        placeholder="Search for your school..."
+                        value={schoolSearchTerm}
+                        onChange={(e) => setSchoolSearchTerm(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
+                    <div className="space-y-3 max-h-96 overflow-y-auto">
+                      {filteredSchools.length > 0 ? (
+                        filteredSchools.map((school) => (
+                          <button
+                            key={school.id}
+                            onClick={() => handleSchoolSelect(school)}
+                            className="w-full p-4 text-left border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                          >
+                            <div className="font-medium text-gray-900">{school.name}</div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">
+                            No schools found matching "{schoolSearchTerm}".
+                          </p>
+                          <p className="text-sm text-gray-600 mt-2">
+                            Try a different search term or check the spelling.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    {schools.length > 0 && (
+                      <div className="mt-4 text-center">
+                        <p className="text-sm text-gray-600">
+                          Showing {filteredSchools.length} of {schools.length} schools
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
