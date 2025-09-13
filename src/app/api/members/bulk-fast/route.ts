@@ -97,7 +97,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 6: Check for existing members if needed
-    let existingMembers: any[] = []
+    let existingMembers: Array<{
+      id: string
+      name: string
+      school_id: string
+      organization_id: string
+      submission_url: string
+    }> = []
     let duplicatesSkipped = 0
     let duplicatesUpdated = 0
 
@@ -169,8 +175,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 8: Execute bulk operations
-    let insertedMembers: any[] = []
-    let updatedMembers: any[] = []
+    let insertedMembers: Array<{
+      id: string
+      name: string
+      school_id: string
+      organization_id: string
+      submission_url: string
+      created_at: string
+      schools?: {
+        id: string
+        name: string
+        organizations?: {
+          id: string
+          name: string
+        }
+      }
+    }> = []
+    const updatedMembers: Array<{
+      id: string
+      name: string
+      school_id: string
+      organization_id: string
+      submission_url: string
+      created_at: string
+      schools?: {
+        id: string
+        name: string
+        organizations?: {
+          id: string
+          name: string
+        }
+      }
+    }> = []
 
     // Insert new members
     if (membersToInsert.length > 0) {
