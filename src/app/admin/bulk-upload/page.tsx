@@ -6,8 +6,8 @@ import { useState } from 'react'
 export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
-  const [result, setResult] = useState<{ success: number; errors: string[] } | null>(null)
+  const [useFastMode, setUseFastMode] = useState(true)
+  const [result, setResult] = useState<{ success: number; errors: string[]; stats?: any } | null>(null)
   // Removed unused state variables since API now handles org/school creation
 
   // No need to load data since API handles org/school creation automatically
@@ -57,7 +57,6 @@ export default function BulkUploadPage() {
 
     setLoading(true)
     setResult(null)
-    setUploadProgress(null)
 
     try {
       const csvText = await file.text()
@@ -71,65 +70,54 @@ export default function BulkUploadPage() {
         submission_url: member.submission_url
       }))
 
-      // For large files, we'll process in chunks to avoid payload limits
-      const chunkSize = 100 // Process 100 members at a time
-      const chunks = []
-      for (let i = 0; i < members.length; i += chunkSize) {
-        chunks.push(members.slice(i, i + chunkSize))
-      }
+      // Choose the fastest method based on user preference
+      const endpoint = useFastMode ? '/api/members/bulk-csv' : '/api/members/bulk-fast'
+      const body = useFastMode 
+        ? JSON.stringify({ csvData: csvText })
+        : JSON.stringify({ members })
+      
+      console.log(`Processing ${members.length} members with ${useFastMode ? 'ultra-fast CSV' : 'fast bulk'} upload`)
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body,
+      })
 
-      let totalSuccess = 0
-      const allErrors: string[] = []
-
-      // Process each chunk
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i]
-        setUploadProgress({ current: i + 1, total: chunks.length })
-        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} members)`)
-        
-        const response = await fetch('/api/members/bulk', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ members: chunk }),
+      if (response.ok) {
+        const data = await response.json()
+        setResult({ 
+          success: data.data.length, 
+          errors: [],
+          stats: data.stats
         })
-
-        if (response.ok) {
-          const data = await response.json()
-          totalSuccess += data.data.length
-        } else {
-          // Try to parse JSON error, but handle cases where response might be HTML
-          let errorMessage = `Chunk ${i + 1} failed`
+      } else {
+        // Try to parse JSON error, but handle cases where response might be HTML
+        let errorMessage = 'Upload failed'
+        try {
+          const error = await response.json()
+          errorMessage = error.error || errorMessage
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text content
           try {
-            const error = await response.json()
-            errorMessage = error.error || errorMessage
-          } catch (parseError) {
-            // If JSON parsing fails, try to get text content
-            try {
-              const errorText = await response.text()
-              if (response.status === 413) {
-                errorMessage = `Chunk ${i + 1}: File too large. Please use a smaller CSV file or split your data into multiple files.`
-              } else {
-                errorMessage = `Chunk ${i + 1}: Server error (${response.status}): ${errorText.substring(0, 200)}`
-              }
-            } catch (textError) {
-              if (response.status === 413) {
-                errorMessage = `Chunk ${i + 1}: File too large. Please use a smaller CSV file or split your data into multiple files.`
-              } else {
-                errorMessage = `Chunk ${i + 1}: Server error (${response.status}): Unable to read error details`
-              }
+            const errorText = await response.text()
+            if (response.status === 413) {
+              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
+            } else {
+              errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
+            }
+          } catch (textError) {
+            if (response.status === 413) {
+              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
+            } else {
+              errorMessage = `Server error (${response.status}): Unable to read error details`
             }
           }
-          allErrors.push(errorMessage)
         }
+        setResult({ success: 0, errors: [errorMessage] })
       }
-
-      // Set final result
-      setResult({ 
-        success: totalSuccess, 
-        errors: allErrors 
-      })
     } catch (error) {
       console.error('Bulk upload error:', error)
       setResult({ 
@@ -138,7 +126,6 @@ export default function BulkUploadPage() {
       })
     } finally {
       setLoading(false)
-      setUploadProgress(null)
     }
   }
 
@@ -152,6 +139,19 @@ export default function BulkUploadPage() {
         <p className="text-sm text-gray-500 mt-2">
           <strong>File size limit:</strong> 10MB maximum. For larger datasets, please split your CSV into multiple files.
         </p>
+        <div className="mt-4 flex items-center space-x-4">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={useFastMode}
+              onChange={(e) => setUseFastMode(e.target.checked)}
+              className="mr-2"
+            />
+            <span className="text-sm text-gray-700">
+              <strong>Ultra-fast mode</strong> (recommended) - Uses direct SQL operations for maximum speed
+            </span>
+          </label>
+        </div>
         <div className="mt-4 bg-gray-50 p-4 rounded-lg">
           <code className="text-sm">
             organization, school, member_name, submission_url
@@ -190,24 +190,6 @@ export default function BulkUploadPage() {
             {loading ? 'Uploading...' : 'Upload Members'}
           </button>
 
-          {uploadProgress && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-blue-800 font-medium">
-                  Processing chunk {uploadProgress.current} of {uploadProgress.total}
-                </span>
-                <span className="text-blue-600 text-sm">
-                  {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
-                </span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
 
           {result && (
             <div className={`p-4 rounded-lg ${
@@ -216,9 +198,18 @@ export default function BulkUploadPage() {
                 : 'bg-green-50 border border-green-200'
             }`}>
               {result.errors.length === 0 ? (
-                <p className="text-green-800">
-                  Successfully uploaded {result.success} members!
-                </p>
+                <div>
+                  <p className="text-green-800 font-medium mb-2">
+                    Successfully uploaded {result.success} members!
+                  </p>
+                  {result.stats && (
+                    <div className="text-green-700 text-sm space-y-1">
+                      <p>• Organizations created: {result.stats.organizationsCreated}</p>
+                      <p>• Schools created: {result.stats.schoolsCreated}</p>
+                      <p>• Members created: {result.stats.membersCreated}</p>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div>
                   <p className="text-red-800 font-medium mb-2">Upload failed:</p>
