@@ -27,7 +27,7 @@ export default function AdminLogin() {
       
       // Test Supabase connection first
       try {
-        const { data: testData, error: testError } = await supabase
+        const { error: testError } = await supabase
           .from('organizations')
           .select('count')
           .limit(1)

@@ -227,7 +227,7 @@ export default function Home() {
                       ) : (
                         <div className="text-center py-8">
                           <p className="text-gray-500">
-                            No schools found matching "{schoolSearchTerm}".
+                            No schools found matching &quot;{schoolSearchTerm}&quot;.
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
                             Try a different search term or check the spelling.
