@@ -14,6 +14,16 @@ export default function BulkUploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
+      // Check file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+      if (selectedFile.size > maxSize) {
+        setResult({ 
+          success: 0, 
+          errors: [`File size (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB) exceeds the 10MB limit. Please use a smaller file or split your data.`] 
+        })
+        return
+      }
+      
       setFile(selectedFile)
       setResult(null)
     }
@@ -80,9 +90,17 @@ export default function BulkUploadPage() {
           // If JSON parsing fails, try to get text content
           try {
             const errorText = await response.text()
-            errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
+            if (response.status === 413) {
+              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
+            } else {
+              errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
+            }
           } catch (textError) {
-            errorMessage = `Server error (${response.status}): Unable to read error details`
+            if (response.status === 413) {
+              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
+            } else {
+              errorMessage = `Server error (${response.status}): Unable to read error details`
+            }
           }
         }
         setResult({ success: 0, errors: [errorMessage] })
@@ -104,6 +122,9 @@ export default function BulkUploadPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Bulk Upload Members</h1>
         <p className="text-gray-600">
           Upload a CSV file to add multiple members at once. The CSV should have the following columns:
+        </p>
+        <p className="text-sm text-gray-500 mt-2">
+          <strong>File size limit:</strong> 10MB maximum. For larger datasets, please split your CSV into multiple files.
         </p>
         <div className="mt-4 bg-gray-50 p-4 rounded-lg">
           <code className="text-sm">
