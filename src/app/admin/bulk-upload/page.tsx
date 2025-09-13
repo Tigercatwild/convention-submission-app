@@ -79,6 +79,7 @@ export default function BulkUploadPage() {
       console.log(`File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
       console.log(`Members payload size: ${(membersPayload.length / 1024 / 1024).toFixed(2)}MB`)
       console.log(`CSV payload size: ${(csvPayload.length / 1024 / 1024).toFixed(2)}MB`)
+      console.log(`Max payload size: ${(maxPayloadSize / 1024 / 1024).toFixed(2)}MB`)
 
       // Choose the fastest method based on user preference and payload size
       let endpoint, body
@@ -125,21 +126,23 @@ export default function BulkUploadPage() {
       } else {
         // Try to parse JSON error, but handle cases where response might be HTML
         let errorMessage = 'Upload failed'
+        console.log(`Upload failed with status: ${response.status}`)
         try {
           const error = await response.json()
+          console.log('Error response:', error)
           errorMessage = error.error || errorMessage
         } catch {
           // If JSON parsing fails, try to get text content
           try {
             const errorText = await response.text()
             if (response.status === 413) {
-              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
+              errorMessage = 'File too large. Please use a smaller CSV file (max 8MB) or split your data into multiple files.'
             } else {
               errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
             }
           } catch {
             if (response.status === 413) {
-              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
+              errorMessage = 'File too large. Please use a smaller CSV file (max 8MB) or split your data into multiple files.'
             } else {
               errorMessage = `Server error (${response.status}): Unable to read error details`
             }

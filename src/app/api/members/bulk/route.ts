@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Check content length first
+    // Check content length first (8MB limit for JSON payload)
     const contentLength = request.headers.get('content-length')
-    if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+    if (contentLength && parseInt(contentLength) > 8 * 1024 * 1024) {
       return NextResponse.json({ 
-        error: 'Request too large. Maximum size is 10MB.' 
+        error: 'Request too large. Maximum size is 8MB.' 
       }, { status: 413 })
     }
 
