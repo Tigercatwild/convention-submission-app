@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Configure runtime for larger payloads
+export const runtime = 'nodejs'
+export const maxDuration = 30
+
 // POST /api/members/bulk - Bulk upload members (admin only)
 export async function POST(request: NextRequest) {
   try {
+    // Check content length first
+    const contentLength = request.headers.get('content-length')
+    if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+      return NextResponse.json({ 
+        error: 'Request too large. Maximum size is 10MB.' 
+      }, { status: 413 })
+    }
+
     const { members } = await request.json()
 
     if (!Array.isArray(members) || members.length === 0) {

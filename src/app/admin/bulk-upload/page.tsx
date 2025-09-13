@@ -6,6 +6,7 @@ import { useState } from 'react'
 export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
   const [result, setResult] = useState<{ success: number; errors: string[] } | null>(null)
   // Removed unused state variables since API now handles org/school creation
 
@@ -56,6 +57,7 @@ export default function BulkUploadPage() {
 
     setLoading(true)
     setResult(null)
+    setUploadProgress(null)
 
     try {
       const csvText = await file.text()
@@ -69,42 +71,65 @@ export default function BulkUploadPage() {
         submission_url: member.submission_url
       }))
 
-      const response = await fetch('/api/members/bulk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ members }),
-      })
+      // For large files, we'll process in chunks to avoid payload limits
+      const chunkSize = 100 // Process 100 members at a time
+      const chunks = []
+      for (let i = 0; i < members.length; i += chunkSize) {
+        chunks.push(members.slice(i, i + chunkSize))
+      }
 
-      if (response.ok) {
-        const data = await response.json()
-        setResult({ success: data.data.length, errors: [] })
-      } else {
-        // Try to parse JSON error, but handle cases where response might be HTML
-        let errorMessage = 'Upload failed'
-        try {
-          const error = await response.json()
-          errorMessage = error.error || errorMessage
-        } catch (parseError) {
-          // If JSON parsing fails, try to get text content
+      let totalSuccess = 0
+      const allErrors: string[] = []
+
+      // Process each chunk
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i]
+        setUploadProgress({ current: i + 1, total: chunks.length })
+        console.log(`Processing chunk ${i + 1}/${chunks.length} (${chunk.length} members)`)
+        
+        const response = await fetch('/api/members/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ members: chunk }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          totalSuccess += data.data.length
+        } else {
+          // Try to parse JSON error, but handle cases where response might be HTML
+          let errorMessage = `Chunk ${i + 1} failed`
           try {
-            const errorText = await response.text()
-            if (response.status === 413) {
-              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
-            } else {
-              errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
-            }
-          } catch (textError) {
-            if (response.status === 413) {
-              errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
-            } else {
-              errorMessage = `Server error (${response.status}): Unable to read error details`
+            const error = await response.json()
+            errorMessage = error.error || errorMessage
+          } catch (parseError) {
+            // If JSON parsing fails, try to get text content
+            try {
+              const errorText = await response.text()
+              if (response.status === 413) {
+                errorMessage = `Chunk ${i + 1}: File too large. Please use a smaller CSV file or split your data into multiple files.`
+              } else {
+                errorMessage = `Chunk ${i + 1}: Server error (${response.status}): ${errorText.substring(0, 200)}`
+              }
+            } catch (textError) {
+              if (response.status === 413) {
+                errorMessage = `Chunk ${i + 1}: File too large. Please use a smaller CSV file or split your data into multiple files.`
+              } else {
+                errorMessage = `Chunk ${i + 1}: Server error (${response.status}): Unable to read error details`
+              }
             }
           }
+          allErrors.push(errorMessage)
         }
-        setResult({ success: 0, errors: [errorMessage] })
       }
+
+      // Set final result
+      setResult({ 
+        success: totalSuccess, 
+        errors: allErrors 
+      })
     } catch (error) {
       console.error('Bulk upload error:', error)
       setResult({ 
@@ -113,6 +138,7 @@ export default function BulkUploadPage() {
       })
     } finally {
       setLoading(false)
+      setUploadProgress(null)
     }
   }
 
@@ -163,6 +189,25 @@ export default function BulkUploadPage() {
           >
             {loading ? 'Uploading...' : 'Upload Members'}
           </button>
+
+          {uploadProgress && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-blue-800 font-medium">
+                  Processing chunk {uploadProgress.current} of {uploadProgress.total}
+                </span>
+                <span className="text-blue-600 text-sm">
+                  {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
 
           {result && (
             <div className={`p-4 rounded-lg ${

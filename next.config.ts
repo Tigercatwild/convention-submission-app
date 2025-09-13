@@ -4,11 +4,8 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['@supabase/supabase-js']
   },
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb', // Allow up to 10MB for file uploads
-    },
-  },
+  // Note: bodyParser config doesn't work with App Router
+  // We'll handle this in the API route itself
 };
 
 export default nextConfig;
