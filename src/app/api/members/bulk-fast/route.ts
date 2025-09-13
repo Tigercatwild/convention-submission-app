@@ -11,10 +11,14 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const { members } = await request.json()
+    const { members, duplicateHandling = 'skip' } = await request.json()
 
     if (!Array.isArray(members) || members.length === 0) {
       return NextResponse.json({ error: 'Members array is required' }, { status: 400 })
+    }
+
+    if (!['skip', 'update', 'error'].includes(duplicateHandling)) {
+      return NextResponse.json({ error: 'Invalid duplicateHandling option. Must be skip, update, or error' }, { status: 400 })
     }
 
     // Step 1: Get all unique organizations and schools from the data
@@ -92,8 +96,43 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 6: Prepare members for bulk insert
-    const membersToInsert = members.map(member => {
+    // Step 6: Check for existing members if needed
+    let existingMembers: any[] = []
+    let duplicatesSkipped = 0
+    let duplicatesUpdated = 0
+
+    if (duplicateHandling !== 'error') {
+      // Get existing members to check for duplicates
+      const memberQueries = members.map(member => {
+        const orgId = newOrgMap.get(member.organization_name)
+        const schoolId = newSchoolMap.get(`${orgId}|${member.school_name}`)
+        return { name: member.member_name, school_id: schoolId, organization_id: orgId }
+      }).filter(m => m.school_id && m.organization_id)
+
+      if (memberQueries.length > 0) {
+        const { data: existing, error: existingError } = await supabaseAdmin
+          .from('members')
+          .select('id, name, school_id, organization_id, submission_url')
+          .or(memberQueries.map(m => 
+            `and(name.eq.${m.name},school_id.eq.${m.school_id},organization_id.eq.${m.organization_id})`
+          ).join(','))
+
+        if (existingError) {
+          return NextResponse.json({ error: `Failed to check existing members: ${existingError.message}` }, { status: 500 })
+        }
+
+        existingMembers = existing || []
+      }
+    }
+
+    // Step 7: Prepare members for bulk insert/update
+    const membersToInsert = []
+    const membersToUpdate = []
+    const existingMemberMap = new Map(
+      existingMembers.map(m => [`${m.name}|${m.school_id}|${m.organization_id}`, m])
+    )
+
+    for (const member of members) {
       const orgId = newOrgMap.get(member.organization_name)
       const schoolId = newSchoolMap.get(`${orgId}|${member.school_name}`)
       
@@ -101,41 +140,101 @@ export async function POST(request: NextRequest) {
         throw new Error(`Failed to resolve organization or school for member: ${member.member_name}`)
       }
 
-      return {
-        name: member.member_name,
-        school_id: schoolId,
-        organization_id: orgId,
-        submission_url: member.submission_url
+      const memberKey = `${member.member_name}|${schoolId}|${orgId}`
+      const existingMember = existingMemberMap.get(memberKey)
+
+      if (existingMember) {
+        if (duplicateHandling === 'error') {
+          return NextResponse.json({ 
+            error: `Duplicate member found: ${member.member_name} in ${member.organization_name} - ${member.school_name}` 
+          }, { status: 400 })
+        } else if (duplicateHandling === 'update') {
+          membersToUpdate.push({
+            id: existingMember.id,
+            submission_url: member.submission_url
+          })
+          duplicatesUpdated++
+        } else {
+          // skip
+          duplicatesSkipped++
+        }
+      } else {
+        membersToInsert.push({
+          name: member.member_name,
+          school_id: schoolId,
+          organization_id: orgId,
+          submission_url: member.submission_url
+        })
       }
-    })
-
-    // Step 7: Bulk insert all members at once
-    const { data: insertedMembers, error: insertError } = await supabaseAdmin
-      .from('members')
-      .insert(membersToInsert)
-      .select(`
-        *,
-        schools (
-          id,
-          name,
-          organizations (
-            id,
-            name
-          )
-        )
-      `)
-
-    if (insertError) {
-      return NextResponse.json({ error: `Failed to insert members: ${insertError.message}` }, { status: 500 })
     }
 
+    // Step 8: Execute bulk operations
+    let insertedMembers: any[] = []
+    let updatedMembers: any[] = []
+
+    // Insert new members
+    if (membersToInsert.length > 0) {
+      const { data: inserted, error: insertError } = await supabaseAdmin
+        .from('members')
+        .insert(membersToInsert)
+        .select(`
+          *,
+          schools (
+            id,
+            name,
+            organizations (
+              id,
+              name
+            )
+          )
+        `)
+
+      if (insertError) {
+        return NextResponse.json({ error: `Failed to insert members: ${insertError.message}` }, { status: 500 })
+      }
+
+      insertedMembers = inserted || []
+    }
+
+    // Update existing members
+    if (membersToUpdate.length > 0) {
+      for (const memberUpdate of membersToUpdate) {
+        const { data: updated, error: updateError } = await supabaseAdmin
+          .from('members')
+          .update({ submission_url: memberUpdate.submission_url })
+          .eq('id', memberUpdate.id)
+          .select(`
+            *,
+            schools (
+              id,
+              name,
+              organizations (
+                id,
+                name
+              )
+            )
+          `)
+          .single()
+
+        if (updateError) {
+          return NextResponse.json({ error: `Failed to update member: ${updateError.message}` }, { status: 500 })
+        }
+
+        updatedMembers.push(updated)
+      }
+    }
+
+    const totalProcessed = insertedMembers.length + updatedMembers.length
+
     return NextResponse.json({ 
-      message: `${insertedMembers.length} members created successfully`,
-      data: insertedMembers,
+      message: `${totalProcessed} members processed successfully`,
+      data: [...insertedMembers, ...updatedMembers],
       stats: {
         organizationsCreated: orgsToCreate.length,
         schoolsCreated: schoolsToCreate.length,
-        membersCreated: insertedMembers.length
+        membersCreated: insertedMembers.length,
+        duplicatesSkipped: duplicatesSkipped,
+        duplicatesUpdated: duplicatesUpdated
       }
     }, { status: 201 })
 

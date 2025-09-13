@@ -11,10 +11,14 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    const { csvData } = await request.json()
+    const { csvData, duplicateHandling = 'skip' } = await request.json()
 
     if (!csvData || typeof csvData !== 'string') {
       return NextResponse.json({ error: 'CSV data is required' }, { status: 400 })
+    }
+
+    if (!['skip', 'update', 'error'].includes(duplicateHandling)) {
+      return NextResponse.json({ error: 'Invalid duplicateHandling option. Must be skip, update, or error' }, { status: 400 })
     }
 
     // Parse CSV data
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
       const bulkResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/members/bulk-fast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ members })
+        body: JSON.stringify({ members, duplicateHandling })
       })
 
       if (!bulkResponse.ok) {

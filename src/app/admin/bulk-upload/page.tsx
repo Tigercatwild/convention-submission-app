@@ -7,7 +7,8 @@ export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [useFastMode, setUseFastMode] = useState(true)
-  const [result, setResult] = useState<{ success: number; errors: string[]; stats?: { organizationsCreated: number; schoolsCreated: number; membersCreated: number } } | null>(null)
+  const [duplicateHandling, setDuplicateHandling] = useState<'skip' | 'update' | 'error'>('skip')
+  const [result, setResult] = useState<{ success: number; errors: string[]; stats?: { organizationsCreated: number; schoolsCreated: number; membersCreated: number; duplicatesSkipped?: number; duplicatesUpdated?: number } } | null>(null)
   // Removed unused state variables since API now handles org/school creation
 
   // No need to load data since API handles org/school creation automatically
@@ -73,10 +74,10 @@ export default function BulkUploadPage() {
       // Choose the fastest method based on user preference
       const endpoint = useFastMode ? '/api/members/bulk-csv' : '/api/members/bulk-fast'
       const body = useFastMode 
-        ? JSON.stringify({ csvData: csvText })
-        : JSON.stringify({ members })
+        ? JSON.stringify({ csvData: csvText, duplicateHandling })
+        : JSON.stringify({ members, duplicateHandling })
       
-      console.log(`Processing ${members.length} members with ${useFastMode ? 'ultra-fast CSV' : 'fast bulk'} upload`)
+      console.log(`Processing ${members.length} members with ${useFastMode ? 'ultra-fast CSV' : 'fast bulk'} upload (duplicates: ${duplicateHandling})`)
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -139,18 +140,67 @@ export default function BulkUploadPage() {
         <p className="text-sm text-gray-500 mt-2">
           <strong>File size limit:</strong> 10MB maximum. For larger datasets, please split your CSV into multiple files.
         </p>
-        <div className="mt-4 flex items-center space-x-4">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={useFastMode}
-              onChange={(e) => setUseFastMode(e.target.checked)}
-              className="mr-2"
-            />
-            <span className="text-sm text-gray-700">
-              <strong>Ultra-fast mode</strong> (recommended) - Uses direct SQL operations for maximum speed
-            </span>
-          </label>
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={useFastMode}
+                onChange={(e) => setUseFastMode(e.target.checked)}
+                className="mr-2"
+              />
+              <span className="text-sm text-gray-700">
+                <strong>Ultra-fast mode</strong> (recommended) - Uses direct SQL operations for maximum speed
+              </span>
+            </label>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Duplicate Handling
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="duplicateHandling"
+                  value="skip"
+                  checked={duplicateHandling === 'skip'}
+                  onChange={(e) => setDuplicateHandling(e.target.value as 'skip' | 'update' | 'error')}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">
+                  <strong>Skip duplicates</strong> - Ignore existing members (recommended)
+                </span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="duplicateHandling"
+                  value="update"
+                  checked={duplicateHandling === 'update'}
+                  onChange={(e) => setDuplicateHandling(e.target.value as 'skip' | 'update' | 'error')}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">
+                  <strong>Update duplicates</strong> - Update existing members with new data
+                </span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="duplicateHandling"
+                  value="error"
+                  checked={duplicateHandling === 'error'}
+                  onChange={(e) => setDuplicateHandling(e.target.value as 'skip' | 'update' | 'error')}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">
+                  <strong>Error on duplicates</strong> - Stop upload if duplicates found
+                </span>
+              </label>
+            </div>
+          </div>
         </div>
         <div className="mt-4 bg-gray-50 p-4 rounded-lg">
           <code className="text-sm">
@@ -207,6 +257,12 @@ export default function BulkUploadPage() {
                       <p>• Organizations created: {result.stats.organizationsCreated}</p>
                       <p>• Schools created: {result.stats.schoolsCreated}</p>
                       <p>• Members created: {result.stats.membersCreated}</p>
+                      {result.stats.duplicatesSkipped && result.stats.duplicatesSkipped > 0 && (
+                        <p>• Duplicates skipped: {result.stats.duplicatesSkipped}</p>
+                      )}
+                      {result.stats.duplicatesUpdated && result.stats.duplicatesUpdated > 0 && (
+                        <p>• Duplicates updated: {result.stats.duplicatesUpdated}</p>
+                      )}
                     </div>
                   )}
                 </div>
