@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Create missing organizations in bulk
     const orgsToCreate = uniqueOrgs.filter(orgName => !existingOrgMap.has(orgName))
-    let newOrgMap = new Map(existingOrgMap)
+    const newOrgMap = new Map(existingOrgMap)
 
     if (orgsToCreate.length > 0) {
       const { data: newOrgs, error: createOrgError } = await supabaseAdmin
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       !existingSchoolMap.has(`${q.organization_id}|${q.name}`)
     )
 
-    let newSchoolMap = new Map(existingSchoolMap)
+    const newSchoolMap = new Map(existingSchoolMap)
 
     if (schoolsToCreate.length > 0) {
       const { data: newSchools, error: createSchoolError } = await supabaseAdmin

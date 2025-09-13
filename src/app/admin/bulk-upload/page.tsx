@@ -7,7 +7,7 @@ export default function BulkUploadPage() {
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [useFastMode, setUseFastMode] = useState(true)
-  const [result, setResult] = useState<{ success: number; errors: string[]; stats?: any } | null>(null)
+  const [result, setResult] = useState<{ success: number; errors: string[]; stats?: { organizationsCreated: number; schoolsCreated: number; membersCreated: number } } | null>(null)
   // Removed unused state variables since API now handles org/school creation
 
   // No need to load data since API handles org/school creation automatically
@@ -99,7 +99,7 @@ export default function BulkUploadPage() {
         try {
           const error = await response.json()
           errorMessage = error.error || errorMessage
-        } catch (parseError) {
+        } catch {
           // If JSON parsing fails, try to get text content
           try {
             const errorText = await response.text()
@@ -108,7 +108,7 @@ export default function BulkUploadPage() {
             } else {
               errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
             }
-          } catch (textError) {
+          } catch {
             if (response.status === 413) {
               errorMessage = 'File too large. Please use a smaller CSV file (max 10MB) or split your data into multiple files.'
             } else {
