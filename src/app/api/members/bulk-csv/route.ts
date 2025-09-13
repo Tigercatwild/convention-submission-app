@@ -4,6 +4,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 // POST /api/members/bulk-csv - Ultra-fast CSV import using SQL
 export async function POST(request: NextRequest) {
   try {
+    // Validate environment variables
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ 
+        error: 'Supabase configuration is missing. Please check environment variables.' 
+      }, { status: 500 })
+    }
+
     const { csvData } = await request.json()
 
     if (!csvData || typeof csvData !== 'string') {

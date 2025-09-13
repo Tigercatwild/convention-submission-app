@@ -8,6 +8,13 @@ export const maxDuration = 30
 // POST /api/members/bulk - Bulk upload members (admin only)
 export async function POST(request: NextRequest) {
   try {
+    // Validate environment variables
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ 
+        error: 'Supabase configuration is missing. Please check environment variables.' 
+      }, { status: 500 })
+    }
+
     // Check content length first
     const contentLength = request.headers.get('content-length')
     if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {

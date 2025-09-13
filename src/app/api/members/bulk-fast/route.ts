@@ -4,6 +4,13 @@ import { supabaseAdmin } from '@/lib/supabase'
 // POST /api/members/bulk-fast - Fast bulk upload using direct Supabase operations
 export async function POST(request: NextRequest) {
   try {
+    // Validate environment variables
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ 
+        error: 'Supabase configuration is missing. Please check environment variables.' 
+      }, { status: 500 })
+    }
+
     const { members } = await request.json()
 
     if (!Array.isArray(members) || members.length === 0) {
