@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const { data: existingSchools, error: schoolFetchError } = await supabaseAdmin
       .from('schools')
       .select('id, name, organization_id')
-      .or(schoolQueries.map(q => `and(organization_id.eq.${q.organization_id},name.eq.${q.name})`).join(','))
+      .or(schoolQueries.map(q => `and(organization_id.eq.${q.organization_id},name.eq."${q.name}")`).join(','))
 
     if (schoolFetchError) {
       return NextResponse.json({ error: `Failed to fetch schools: ${schoolFetchError.message}` }, { status: 500 })
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
           .from('members')
           .select('id, name, school_id, organization_id, submission_url')
           .or(memberQueries.map(m => 
-            `and(name.eq.${m.name},school_id.eq.${m.school_id},organization_id.eq.${m.organization_id})`
+            `and(name.eq."${m.name}",school_id.eq.${m.school_id},organization_id.eq.${m.organization_id})`
           ).join(','))
 
         if (existingError) {
