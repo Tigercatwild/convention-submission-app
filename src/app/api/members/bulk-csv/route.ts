@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid duplicateHandling option. Must be skip, update, or error' }, { status: 400 })
     }
 
-    // Check CSV data size (8MB limit for JSON payload)
-    const maxSize = 8 * 1024 * 1024 // 8MB
+    // Check CSV data size (4.5MB limit for Vercel serverless functions)
+    const maxSize = 4.5 * 1024 * 1024 // 4.5MB
     if (csvData.length > maxSize) {
       return NextResponse.json({ 
-        error: `CSV data too large (${(csvData.length / 1024 / 1024).toFixed(2)}MB). Maximum size is 8MB.` 
+        error: `CSV data too large (${(csvData.length / 1024 / 1024).toFixed(2)}MB). Maximum size is 4.5MB.` 
       }, { status: 413 })
     }
 

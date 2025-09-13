@@ -17,12 +17,12 @@ export default function BulkUploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
-      // Check file size (8MB limit for JSON payload)
-      const maxSize = 8 * 1024 * 1024 // 8MB in bytes
+      // Check file size (4.5MB limit for Vercel serverless functions)
+      const maxSize = 4.5 * 1024 * 1024 // 4.5MB in bytes
       if (selectedFile.size > maxSize) {
         setResult({ 
           success: 0, 
-          errors: [`File size (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB) exceeds the 8MB limit. Please use a smaller file or split your data.`] 
+          errors: [`File size (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit. Please use a smaller file or split your data.`] 
         })
         return
       }
@@ -75,7 +75,7 @@ export default function BulkUploadPage() {
       // Check JSON payload size (JSON can be 3-4x larger than CSV)
       const membersPayload = JSON.stringify({ members, duplicateHandling })
       const csvPayload = JSON.stringify({ csvData: csvText, duplicateHandling })
-      const maxPayloadSize = 8 * 1024 * 1024 // 8MB for JSON payload (safer than 10MB)
+      const maxPayloadSize = 4.5 * 1024 * 1024 // 4.5MB for Vercel serverless functions
       
       console.log(`File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
       console.log(`Members payload size: ${(membersPayload.length / 1024 / 1024).toFixed(2)}MB`)
@@ -85,13 +85,23 @@ export default function BulkUploadPage() {
       // Choose the fastest method based on user preference and payload size
       let endpoint, body
       if (useFastMode) {
-        if (csvPayload.length > maxPayloadSize) {
-          console.log('CSV payload too large, falling back to members payload')
-          endpoint = '/api/members/bulk-fast'
-          body = membersPayload
-        } else {
+        // For ultra-fast mode, prefer CSV payload as it's usually smaller
+        // Only fall back to members payload if CSV is too large
+        if (csvPayload.length <= maxPayloadSize) {
           endpoint = '/api/members/bulk-csv'
           body = csvPayload
+          console.log('Using ultra-fast CSV mode')
+        } else if (membersPayload.length <= maxPayloadSize) {
+          endpoint = '/api/members/bulk-fast'
+          body = membersPayload
+          console.log('CSV payload too large, falling back to fast bulk mode')
+        } else {
+          // Both payloads are too large
+          setResult({ 
+            success: 0, 
+            errors: [`File too large. CSV payload: ${(csvPayload.length / 1024 / 1024).toFixed(2)}MB, Members payload: ${(membersPayload.length / 1024 / 1024).toFixed(2)}MB. Maximum is 4.5MB. Please split your data.`] 
+          })
+          return
         }
       } else {
         endpoint = '/api/members/bulk-fast'
@@ -102,7 +112,7 @@ export default function BulkUploadPage() {
       if (body.length > maxPayloadSize) {
         setResult({ 
           success: 0, 
-          errors: [`Payload size (${(body.length / 1024 / 1024).toFixed(2)}MB) exceeds the 8MB limit. Please use a smaller file or split your data.`] 
+          errors: [`Payload size (${(body.length / 1024 / 1024).toFixed(2)}MB) exceeds the 4.5MB limit. Please use a smaller file or split your data.`] 
         })
         return
       }
@@ -162,13 +172,13 @@ export default function BulkUploadPage() {
           try {
             const errorText = await response.text()
             if (response.status === 413) {
-              errorMessage = 'File too large. Please use a smaller CSV file (max 8MB) or split your data into multiple files.'
+              errorMessage = 'File too large. Please use a smaller CSV file (max 4.5MB) or split your data into multiple files.'
             } else {
               errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
             }
           } catch {
             if (response.status === 413) {
-              errorMessage = 'File too large. Please use a smaller CSV file (max 8MB) or split your data into multiple files.'
+              errorMessage = 'File too large. Please use a smaller CSV file (max 4.5MB) or split your data into multiple files.'
             } else {
               errorMessage = `Server error (${response.status}): Unable to read error details`
             }
@@ -213,7 +223,7 @@ export default function BulkUploadPage() {
           Upload a CSV file to add multiple members at once. The CSV should have the following columns:
         </p>
         <p className="text-sm text-gray-500 mt-2">
-          <strong>File size limit:</strong> 8MB maximum (JSON payload limit). For larger datasets, please split your CSV into multiple files.
+          <strong>File size limit:</strong> 4.5MB maximum (Vercel serverless function limit). For larger datasets, please split your CSV into multiple files.
         </p>
         <div className="mt-4 space-y-4">
           <div className="space-y-3">

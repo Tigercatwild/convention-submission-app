@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid duplicateHandling option. Must be skip, update, or error' }, { status: 400 })
     }
 
-    // Check content length first (8MB limit for JSON payload)
+    // Check content length first (4.5MB limit for Vercel serverless functions)
     const contentLength = request.headers.get('content-length')
-    if (contentLength && parseInt(contentLength) > 8 * 1024 * 1024) {
+    if (contentLength && parseInt(contentLength) > 4.5 * 1024 * 1024) {
       return NextResponse.json({ 
-        error: 'Request too large. Maximum size is 8MB.' 
+        error: 'Request too large. Maximum size is 4.5MB.' 
       }, { status: 413 })
     }
 
