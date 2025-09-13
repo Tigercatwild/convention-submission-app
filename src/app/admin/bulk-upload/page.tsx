@@ -34,14 +34,52 @@ export default function BulkUploadPage() {
 
   const parseCSV = (csvText: string) => {
     const lines = csvText.split('\n')
-    const headers = lines[0].split(',').map(h => h.trim())
+    
+    // Proper CSV parsing function that handles quoted fields
+    const parseCSVLine = (line: string): string[] => {
+      const result = []
+      let current = ''
+      let inQuotes = false
+      let i = 0
+      
+      while (i < line.length) {
+        const char = line[i]
+        const nextChar = line[i + 1]
+        
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            // Escaped quote
+            current += '"'
+            i += 2
+          } else {
+            // Toggle quote state
+            inQuotes = !inQuotes
+            i++
+          }
+        } else if (char === ',' && !inQuotes) {
+          // Field separator
+          result.push(current.trim())
+          current = ''
+          i++
+        } else {
+          current += char
+          i++
+        }
+      }
+      
+      // Add the last field
+      result.push(current.trim())
+      return result
+    }
+    
+    const headers = parseCSVLine(lines[0]).map(h => h.trim())
     
     const members = []
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim()
       if (!line) continue
       
-      const values = line.split(',').map(v => v.trim())
+      const values = parseCSVLine(line)
       if (values.length !== headers.length) continue
       
       const member: Record<string, string> = {}
