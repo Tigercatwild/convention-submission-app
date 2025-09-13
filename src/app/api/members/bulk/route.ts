@@ -112,7 +112,10 @@ export async function POST(request: NextRequest) {
       message: `${data.length} members created successfully`,
       data 
     }, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  } catch (error) {
+    console.error('Bulk upload error:', error)
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Internal server error' 
+    }, { status: 500 })
   }
 }

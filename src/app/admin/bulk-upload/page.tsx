@@ -71,10 +71,24 @@ export default function BulkUploadPage() {
         const data = await response.json()
         setResult({ success: data.data.length, errors: [] })
       } else {
-        const error = await response.json()
-        setResult({ success: 0, errors: [error.error] })
+        // Try to parse JSON error, but handle cases where response might be HTML
+        let errorMessage = 'Upload failed'
+        try {
+          const error = await response.json()
+          errorMessage = error.error || errorMessage
+        } catch (parseError) {
+          // If JSON parsing fails, try to get text content
+          try {
+            const errorText = await response.text()
+            errorMessage = `Server error (${response.status}): ${errorText.substring(0, 200)}`
+          } catch (textError) {
+            errorMessage = `Server error (${response.status}): Unable to read error details`
+          }
+        }
+        setResult({ success: 0, errors: [errorMessage] })
       }
     } catch (error) {
+      console.error('Bulk upload error:', error)
       setResult({ 
         success: 0, 
         errors: [error instanceof Error ? error.message : 'Unknown error occurred'] 
