@@ -8,6 +8,7 @@ export default function BulkUploadPage() {
   const [loading, setLoading] = useState(false)
   const [useFastMode, setUseFastMode] = useState(true)
   const [duplicateHandling, setDuplicateHandling] = useState<'skip' | 'update' | 'error'>('skip')
+  const [demoMode, setDemoMode] = useState(false)
   const [result, setResult] = useState<{ success: number; errors: string[]; stats?: { organizationsCreated: number; schoolsCreated: number; membersCreated: number; duplicatesSkipped?: number; duplicatesUpdated?: number } } | null>(null)
   // Removed unused state variables since API now handles org/school creation
 
@@ -108,12 +109,37 @@ export default function BulkUploadPage() {
       
       console.log(`Processing ${members.length} members with ${endpoint.includes('csv') ? 'ultra-fast CSV' : 'fast bulk'} upload (duplicates: ${duplicateHandling})`)
       
+      // Demo mode - simulate successful upload
+      if (demoMode) {
+        console.log('Running in demo mode - simulating successful upload')
+        setTimeout(() => {
+          setResult({ 
+            success: members.length, 
+            errors: [],
+            stats: {
+              organizationsCreated: Math.floor(members.length / 10),
+              schoolsCreated: Math.floor(members.length / 5),
+              membersCreated: members.length,
+              duplicatesSkipped: Math.floor(members.length / 20),
+              duplicatesUpdated: 0
+            }
+          })
+          setLoading(false)
+        }, 2000)
+        return
+      }
+      
+      console.log(`Attempting to call ${endpoint} with ${(body.length / 1024 / 1024).toFixed(2)}MB payload`)
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body,
+      }).catch(fetchError => {
+        console.error('Fetch error:', fetchError)
+        throw new Error(`Network error: ${fetchError.message}`)
       })
 
       if (response.ok) {
@@ -152,10 +178,28 @@ export default function BulkUploadPage() {
       }
     } catch (error) {
       console.error('Bulk upload error:', error)
-      setResult({ 
-        success: 0, 
-        errors: [error instanceof Error ? error.message : 'Unknown error occurred'] 
-      })
+      
+      // If it's a network/API error, provide helpful guidance
+      if (error instanceof Error && (error.message.includes('fetch') || error.message.includes('Network'))) {
+        setResult({ 
+          success: 0, 
+          errors: [
+            'API connection failed. This usually means:',
+            '1. Supabase environment variables are not configured in Vercel',
+            '2. The database is not set up yet',
+            '3. There is a network connectivity issue',
+            '',
+            'To fix this:',
+            '• Set up Supabase and add environment variables to Vercel',
+            '• Or test locally with: npm run dev'
+          ]
+        })
+      } else {
+        setResult({ 
+          success: 0, 
+          errors: [error instanceof Error ? error.message : 'Unknown error occurred'] 
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -172,18 +216,34 @@ export default function BulkUploadPage() {
           <strong>File size limit:</strong> 8MB maximum (JSON payload limit). For larger datasets, please split your CSV into multiple files.
         </p>
         <div className="mt-4 space-y-4">
-          <div className="flex items-center space-x-4">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={useFastMode}
-                onChange={(e) => setUseFastMode(e.target.checked)}
-                className="mr-2"
-              />
-              <span className="text-sm text-gray-700">
-                <strong>Ultra-fast mode</strong> (recommended) - Uses direct SQL operations for maximum speed
-              </span>
-            </label>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={useFastMode}
+                  onChange={(e) => setUseFastMode(e.target.checked)}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">
+                  <strong>Ultra-fast mode</strong> (recommended) - Uses direct SQL operations for maximum speed
+                </span>
+              </label>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={demoMode}
+                  onChange={(e) => setDemoMode(e.target.checked)}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">
+                  <strong>Demo mode</strong> - Simulate upload without API (for testing)
+                </span>
+              </label>
+            </div>
           </div>
           
           <div>
