@@ -182,4 +182,4 @@ Optional (for advanced features):
 - Statistics dashboard
 - Audit logs for admin actions
 - Member search and filtering
-- Export functionality
+- Export functionality# Force deployment - Fri Sep 12 21:49:40 CDT 2025
