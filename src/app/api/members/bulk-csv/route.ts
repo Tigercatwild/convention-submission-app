@@ -111,18 +111,23 @@ export async function POST(request: NextRequest) {
       const schoolsForOrg = schoolQueries.filter(q => q.organization_id === orgId)
       const schoolNames = schoolsForOrg.map(q => q.name)
       
-      // Use 'in' operator which is more efficient than long OR queries
-      const { data: schools, error: schoolFetchError } = await supabaseAdmin
-        .from('schools')
-        .select('id, name, organization_id')
-        .eq('organization_id', orgId)
-        .in('name', schoolNames)
+      // Process school names in chunks to avoid 414 errors
+      const chunkSize = 100 // Process 100 school names at a time
+      for (let i = 0; i < schoolNames.length; i += chunkSize) {
+        const chunk = schoolNames.slice(i, i + chunkSize)
+        
+        const { data: schools, error: schoolFetchError } = await supabaseAdmin
+          .from('schools')
+          .select('id, name, organization_id')
+          .eq('organization_id', orgId)
+          .in('name', chunk)
 
-      if (schoolFetchError) {
-        return NextResponse.json({ error: `Failed to fetch schools for organization ${orgId}: ${schoolFetchError.message}` }, { status: 500 })
+        if (schoolFetchError) {
+          return NextResponse.json({ error: `Failed to fetch schools for organization ${orgId} (chunk ${Math.floor(i/chunkSize) + 1}): ${schoolFetchError.message}` }, { status: 500 })
+        }
+
+        existingSchools.push(...(schools || []))
       }
-
-      existingSchools.push(...(schools || []))
     }
 
     const existingSchoolMap = new Map(
@@ -171,7 +176,7 @@ export async function POST(request: NextRequest) {
       }).filter(m => m.school_id && m.organization_id)
 
       if (memberQueries.length > 0) {
-        // Use a more efficient approach to avoid 414 errors with large datasets
+        // Use chunked queries to avoid 414 errors with very large datasets
         const existingMembersList = []
         const schoolIds = [...new Set(memberQueries.map(m => m.school_id))]
         
@@ -179,17 +184,23 @@ export async function POST(request: NextRequest) {
           const membersForSchool = memberQueries.filter(m => m.school_id === schoolId)
           const memberNames = membersForSchool.map(m => m.name)
           
-          const { data: existing, error: existingError } = await supabaseAdmin
-            .from('members')
-            .select('id, name, school_id, organization_id, submission_url')
-            .eq('school_id', schoolId)
-            .in('name', memberNames)
+          // Process member names in chunks to avoid 414 errors
+          const chunkSize = 50 // Process 50 member names at a time
+          for (let i = 0; i < memberNames.length; i += chunkSize) {
+            const chunk = memberNames.slice(i, i + chunkSize)
+            
+            const { data: existing, error: existingError } = await supabaseAdmin
+              .from('members')
+              .select('id, name, school_id, organization_id, submission_url')
+              .eq('school_id', schoolId)
+              .in('name', chunk)
 
-          if (existingError) {
-            return NextResponse.json({ error: `Failed to check existing members for school ${schoolId}: ${existingError.message}` }, { status: 500 })
+            if (existingError) {
+              return NextResponse.json({ error: `Failed to check existing members for school ${schoolId} (chunk ${Math.floor(i/chunkSize) + 1}): ${existingError.message}` }, { status: 500 })
+            }
+
+            existingMembersList.push(...(existing || []))
           }
-
-          existingMembersList.push(...(existing || []))
         }
 
         existingMembers = existingMembersList
