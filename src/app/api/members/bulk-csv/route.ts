@@ -21,6 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid duplicateHandling option. Must be skip, update, or error' }, { status: 400 })
     }
 
+    // Check CSV data size (8MB limit for JSON payload)
+    const maxSize = 8 * 1024 * 1024 // 8MB
+    if (csvData.length > maxSize) {
+      return NextResponse.json({ 
+        error: `CSV data too large (${(csvData.length / 1024 / 1024).toFixed(2)}MB). Maximum size is 8MB.` 
+      }, { status: 413 })
+    }
+
     // Parse CSV data
     const lines = csvData.split('\n').filter(line => line.trim())
     if (lines.length < 2) {

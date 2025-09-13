@@ -16,12 +16,12 @@ export default function BulkUploadPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
-      // Check file size (10MB limit)
-      const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+      // Check file size (8MB limit for JSON payload)
+      const maxSize = 8 * 1024 * 1024 // 8MB in bytes
       if (selectedFile.size > maxSize) {
         setResult({ 
           success: 0, 
-          errors: [`File size (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB) exceeds the 10MB limit. Please use a smaller file or split your data.`] 
+          errors: [`File size (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB) exceeds the 8MB limit. Please use a smaller file or split your data.`] 
         })
         return
       }
@@ -71,13 +71,41 @@ export default function BulkUploadPage() {
         submission_url: member.submission_url
       }))
 
-      // Choose the fastest method based on user preference
-      const endpoint = useFastMode ? '/api/members/bulk-csv' : '/api/members/bulk-fast'
-      const body = useFastMode 
-        ? JSON.stringify({ csvData: csvText, duplicateHandling })
-        : JSON.stringify({ members, duplicateHandling })
+      // Check JSON payload size (JSON can be 3-4x larger than CSV)
+      const membersPayload = JSON.stringify({ members, duplicateHandling })
+      const csvPayload = JSON.stringify({ csvData: csvText, duplicateHandling })
+      const maxPayloadSize = 8 * 1024 * 1024 // 8MB for JSON payload (safer than 10MB)
       
-      console.log(`Processing ${members.length} members with ${useFastMode ? 'ultra-fast CSV' : 'fast bulk'} upload (duplicates: ${duplicateHandling})`)
+      console.log(`File size: ${(file.size / 1024 / 1024).toFixed(2)}MB`)
+      console.log(`Members payload size: ${(membersPayload.length / 1024 / 1024).toFixed(2)}MB`)
+      console.log(`CSV payload size: ${(csvPayload.length / 1024 / 1024).toFixed(2)}MB`)
+
+      // Choose the fastest method based on user preference and payload size
+      let endpoint, body
+      if (useFastMode) {
+        if (csvPayload.length > maxPayloadSize) {
+          console.log('CSV payload too large, falling back to members payload')
+          endpoint = '/api/members/bulk-fast'
+          body = membersPayload
+        } else {
+          endpoint = '/api/members/bulk-csv'
+          body = csvPayload
+        }
+      } else {
+        endpoint = '/api/members/bulk-fast'
+        body = membersPayload
+      }
+
+      // Final size check
+      if (body.length > maxPayloadSize) {
+        setResult({ 
+          success: 0, 
+          errors: [`Payload size (${(body.length / 1024 / 1024).toFixed(2)}MB) exceeds the 8MB limit. Please use a smaller file or split your data.`] 
+        })
+        return
+      }
+      
+      console.log(`Processing ${members.length} members with ${endpoint.includes('csv') ? 'ultra-fast CSV' : 'fast bulk'} upload (duplicates: ${duplicateHandling})`)
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -138,7 +166,7 @@ export default function BulkUploadPage() {
           Upload a CSV file to add multiple members at once. The CSV should have the following columns:
         </p>
         <p className="text-sm text-gray-500 mt-2">
-          <strong>File size limit:</strong> 10MB maximum. For larger datasets, please split your CSV into multiple files.
+          <strong>File size limit:</strong> 8MB maximum (JSON payload limit). For larger datasets, please split your CSV into multiple files.
         </p>
         <div className="mt-4 space-y-4">
           <div className="flex items-center space-x-4">

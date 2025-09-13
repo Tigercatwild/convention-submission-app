@@ -21,6 +21,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid duplicateHandling option. Must be skip, update, or error' }, { status: 400 })
     }
 
+    // Check content length first (8MB limit for JSON payload)
+    const contentLength = request.headers.get('content-length')
+    if (contentLength && parseInt(contentLength) > 8 * 1024 * 1024) {
+      return NextResponse.json({ 
+        error: 'Request too large. Maximum size is 8MB.' 
+      }, { status: 413 })
+    }
+
     // Step 1: Get all unique organizations and schools from the data
     const uniqueOrgs = [...new Set(members.map(m => m.organization_name))]
     const uniqueSchools = [...new Set(members.map(m => `${m.organization_name}|${m.school_name}`))]
