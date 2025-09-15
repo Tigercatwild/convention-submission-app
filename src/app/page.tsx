@@ -113,13 +113,13 @@ export default function Home() {
   const filteredMembers = searchTerm.trim() === '' 
     ? [] 
     : members.filter(member =>
-        member.name.toLowerCase().includes(searchTerm.toLowerCase())
+        member.name.toLowerCase().startsWith(searchTerm.toLowerCase())
       )
 
   const filteredSchools = schoolSearchTerm.trim() === '' 
     ? schools 
     : schools.filter(school =>
-        school.name.toLowerCase().includes(schoolSearchTerm.toLowerCase())
+        school.name.toLowerCase().startsWith(schoolSearchTerm.toLowerCase())
       )
 
   return (
