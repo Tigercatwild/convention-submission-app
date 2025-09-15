@@ -99,16 +99,16 @@ export async function POST(request: NextRequest) {
       submission_url: row.submission_url?.trim().replace(/^["']+|["']+$/g, '') || '' // Remove leading/trailing quotes
     }))
 
+    // Use the same optimized logic as bulk-fast but with CSV parsing
+    // Step 1: Get all unique organizations and schools from the data
+    const uniqueOrgs = [...new Set(members.map(m => m.organization_name))]
+    const uniqueSchools = [...new Set(members.map(m => `${m.organization_name}|${m.school_name}`))]
+
     // Debug logging to see what's being parsed
     console.log('CSV Parsing Debug:')
     console.log('Sample parsed data:', dataRows.slice(0, 3))
     console.log('Sample members:', members.slice(0, 3))
     console.log('Unique schools:', uniqueSchools.slice(0, 5))
-
-    // Use the same optimized logic as bulk-fast but with CSV parsing
-    // Step 1: Get all unique organizations and schools from the data
-    const uniqueOrgs = [...new Set(members.map(m => m.organization_name))]
-    const uniqueSchools = [...new Set(members.map(m => `${m.organization_name}|${m.school_name}`))]
 
     // Step 2: Bulk fetch existing organizations
     const { data: existingOrgs, error: orgFetchError } = await supabaseAdmin
@@ -378,8 +378,6 @@ export async function POST(request: NextRequest) {
         updatedMembers.push(updated)
       }
     }
-
-    const totalProcessed = insertedMembers.length + updatedMembers.length
 
     return NextResponse.json({
       message: `Successfully processed ${dataRows.length} CSV rows`,
