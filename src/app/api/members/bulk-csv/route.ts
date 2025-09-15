@@ -92,12 +92,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert CSV data to members format and use the bulk-fast logic
-      const members = dataRows.map(row => ({
-        organization_name: row.organization,
-        school_name: row.school,
-        member_name: row.member_name,
-        submission_url: row.submission_url
-      }))
+    const members = dataRows.map(row => ({
+      organization_name: row.organization?.trim().replace(/^["']+|["']+$/g, '') || '', // Remove leading/trailing quotes
+      school_name: row.school?.trim().replace(/^["']+|["']+$/g, '') || '', // Remove leading/trailing quotes
+      member_name: row.member_name?.trim().replace(/^["']+|["']+$/g, '') || '', // Remove leading/trailing quotes
+      submission_url: row.submission_url?.trim().replace(/^["']+|["']+$/g, '') || '' // Remove leading/trailing quotes
+    }))
+
+    // Debug logging to see what's being parsed
+    console.log('CSV Parsing Debug:')
+    console.log('Sample parsed data:', dataRows.slice(0, 3))
+    console.log('Sample members:', members.slice(0, 3))
+    console.log('Unique schools:', uniqueSchools.slice(0, 5))
 
     // Use the same optimized logic as bulk-fast but with CSV parsing
     // Step 1: Get all unique organizations and schools from the data

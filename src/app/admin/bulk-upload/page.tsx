@@ -84,7 +84,9 @@ export default function BulkUploadPage() {
       
       const member: Record<string, string> = {}
       headers.forEach((header, index) => {
-        member[header.toLowerCase().replace(/\s+/g, '_')] = values[index]
+        // Clean the value by removing leading/trailing quotes and trimming
+        const cleanValue = values[index]?.trim().replace(/^["']+|["']+$/g, '') || ''
+        member[header.toLowerCase().replace(/\s+/g, '_')] = cleanValue
       })
       members.push(member)
     }

@@ -14,6 +14,25 @@ export async function PUT(
       return NextResponse.json({ error: 'Name and organization_id are required' }, { status: 400 })
     }
 
+    // Check if a school with the same name and organization already exists (excluding current school)
+    const { data: existingSchool, error: checkError } = await supabase
+      .from('schools')
+      .select('id, name')
+      .eq('name', name)
+      .eq('organization_id', organization_id)
+      .neq('id', id)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      return NextResponse.json({ error: `Failed to check for duplicates: ${checkError.message}` }, { status: 500 })
+    }
+
+    if (existingSchool) {
+      return NextResponse.json({ 
+        error: `A school named "${name}" already exists in this organization. Please choose a different name.` 
+      }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('schools')
       .update({ name, organization_id })

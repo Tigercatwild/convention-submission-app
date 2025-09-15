@@ -14,6 +14,24 @@ export async function PUT(
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
+    // Check if an organization with the same name already exists (excluding current organization)
+    const { data: existingOrg, error: checkError } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('name', name)
+      .neq('id', id)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      return NextResponse.json({ error: `Failed to check for duplicates: ${checkError.message}` }, { status: 500 })
+    }
+
+    if (existingOrg) {
+      return NextResponse.json({ 
+        error: `An organization named "${name}" already exists. Please choose a different name.` 
+      }, { status: 400 })
+    }
+
     const { data, error } = await supabase
       .from('organizations')
       .update({ name })
