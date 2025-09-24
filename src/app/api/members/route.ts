@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .order('name')
-      .limit(50000) // Very high limit to ensure we get all records
+      .limit(50000) // Very high limit to ensure we get all records - updated
 
     if (schoolId) {
       query = query.eq('school_id', schoolId)
