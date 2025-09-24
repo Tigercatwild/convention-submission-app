@@ -1,0 +1,5 @@
+[33mb53dc70[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Increase member limit from 1000 to 10000 to handle large datasets
+[33m3a74071[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add debugging to API and frontend to track Winter Kamin data flow
+[33mcf14bd2[m Fix member search to use includes() instead of startsWith() for better partial matching
+[33m6e56b58[m Implement prefix-based search for schools and members
+[33mcddc821[m Fix TypeScript build error in bulk-csv route

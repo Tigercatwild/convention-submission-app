@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .order('name')
-      .limit(10000) // Increase limit to handle large datasets
+      .limit(50000) // Very high limit to ensure we get all records
 
     if (schoolId) {
       query = query.eq('school_id', schoolId)
@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     // Debug logging for Winter Cayman issue
     if (schoolId) {
       console.log(`API Debug - School ID: ${schoolId}`)
+      console.log(`API Debug - Query limit set to: 10000`)
       console.log(`API Debug - Total members returned: ${data?.length || 0}`)
       if (data && data.length > 0) {
         const winterMembers = data.filter(member => member.name.toLowerCase().includes('winter'))
@@ -47,6 +48,8 @@ export async function GET(request: NextRequest) {
         if (data.length >= 10000) {
           console.log('API Debug - WARNING: Hit 10,000 member limit - there may be more members!')
         }
+        // Show first few member names for debugging
+        console.log('API Debug - First 5 member names:', data.slice(0, 5).map(m => m.name))
       }
     }
 
