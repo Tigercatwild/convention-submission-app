@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .order('name')
+      .limit(10000) // Increase limit to handle large datasets
 
     if (schoolId) {
       query = query.eq('school_id', schoolId)
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Debug logging for Winter Kamin issue
+    // Debug logging for Winter Cayman issue
     if (schoolId) {
       console.log(`API Debug - School ID: ${schoolId}`)
       console.log(`API Debug - Total members returned: ${data?.length || 0}`)
@@ -41,6 +42,10 @@ export async function GET(request: NextRequest) {
         console.log(`API Debug - Winter members found: ${winterMembers.length}`)
         if (winterMembers.length > 0) {
           console.log('API Debug - Winter member names:', winterMembers.map(m => m.name))
+        }
+        // Check if we hit the limit
+        if (data.length >= 10000) {
+          console.log('API Debug - WARNING: Hit 10,000 member limit - there may be more members!')
         }
       }
     }
