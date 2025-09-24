@@ -32,6 +32,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Debug logging for Winter Kamin issue
+    if (schoolId) {
+      console.log(`API Debug - School ID: ${schoolId}`)
+      console.log(`API Debug - Total members returned: ${data?.length || 0}`)
+      if (data && data.length > 0) {
+        const winterMembers = data.filter(member => member.name.toLowerCase().includes('winter'))
+        console.log(`API Debug - Winter members found: ${winterMembers.length}`)
+        if (winterMembers.length > 0) {
+          console.log('API Debug - Winter member names:', winterMembers.map(m => m.name))
+        }
+      }
+    }
+
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

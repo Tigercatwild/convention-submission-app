@@ -81,6 +81,13 @@ export default function Home() {
         console.error('API Error:', data.error)
         setMembers([])
       } else if (Array.isArray(data)) {
+        console.log('Frontend Debug - Members loaded:', data.length)
+        const winterMembers = data.filter(member => member.name.toLowerCase().includes('winter'))
+        if (winterMembers.length > 0) {
+          console.log('Frontend Debug - Winter members found:', winterMembers.map(m => m.name))
+        } else {
+          console.log('Frontend Debug - No Winter members in API response')
+        }
         setMembers(data)
       } else {
         console.error('Unexpected data format:', data)
