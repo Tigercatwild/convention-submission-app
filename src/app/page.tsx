@@ -113,7 +113,7 @@ export default function Home() {
   const filteredMembers = searchTerm.trim() === '' 
     ? [] 
     : members.filter(member =>
-        member.name.toLowerCase().startsWith(searchTerm.toLowerCase())
+        member.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
 
   const filteredSchools = schoolSearchTerm.trim() === '' 
