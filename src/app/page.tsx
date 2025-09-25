@@ -101,51 +101,51 @@ export default function Home() {
     }
   }
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (term: string) => {
-      if (!selectedSchool || term.trim().length < 2) {
-        setSearchResults([])
-        setIsSearching(false)
-        return
-      }
-
-      setIsSearching(true)
-      try {
-        const response = await fetch(`/api/members?schoolId=${selectedSchool.id}&search=${encodeURIComponent(term)}&limit=1000`)
-        const data = await response.json()
-        
-        if (data.error) {
-          console.error('Search API Error:', data.error)
-          setSearchResults([])
-        } else if (Array.isArray(data)) {
-          console.log('Search Debug - Search results:', data.length)
-          setSearchResults(data)
-        } else {
-          console.error('Unexpected search data format:', data)
-          setSearchResults([])
-        }
-      } catch (error) {
-        console.error('Error searching members:', error)
-        setSearchResults([])
-      } finally {
-        setIsSearching(false)
-      }
-    }, 300),
-    [selectedSchool]
-  )
-
-  // Debounce utility function
-  function debounce<T extends (...args: any[]) => any>(
-    func: T,
-    wait: number
-  ): (...args: Parameters<T>) => void {
-    let timeout: NodeJS.Timeout
-    return (...args: Parameters<T>) => {
-      clearTimeout(timeout)
-      timeout = setTimeout(() => func(...args), wait)
+  // Search function
+  const performSearch = useCallback(async (term: string) => {
+    if (!selectedSchool || term.trim().length < 2) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
     }
-  }
+
+    setIsSearching(true)
+    try {
+      const response = await fetch(`/api/members?schoolId=${selectedSchool.id}&search=${encodeURIComponent(term)}&limit=1000`)
+      const data = await response.json()
+      
+      if (data.error) {
+        console.error('Search API Error:', data.error)
+        setSearchResults([])
+      } else if (Array.isArray(data)) {
+        console.log('Search Debug - Search results:', data.length)
+        setSearchResults(data)
+      } else {
+        console.error('Unexpected search data format:', data)
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error('Error searching members:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [selectedSchool])
+
+  // Debounced search function using a timeout approach
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
+  
+  const debouncedSearch = useCallback((term: string) => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout)
+    }
+    
+    const timeout = setTimeout(() => {
+      performSearch(term)
+    }, 300)
+    
+    setSearchTimeout(timeout)
+  }, [performSearch, searchTimeout])
 
   // Handle search term changes
   useEffect(() => {
