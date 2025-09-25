@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Organization, School, Member } from '@/lib/supabase'
 
 export default function Home() {
@@ -11,10 +11,12 @@ export default function Home() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [schools, setSchools] = useState<School[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [searchResults, setSearchResults] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [organizationsLoading, setOrganizationsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [schoolSearchTerm, setSchoolSearchTerm] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
 
   // Load organizations on component mount
   useEffect(() => {
@@ -72,9 +74,12 @@ export default function Home() {
 
   const handleSchoolSelect = async (school: School) => {
     setSelectedSchool(school)
+    setSearchTerm('') // Clear search term when selecting school
+    setSearchResults([]) // Clear previous search results
     setLoading(true)
     try {
-      const response = await fetch(`/api/members?schoolId=${school.id}`)
+      // Load all members for the school (this will be limited by the API)
+      const response = await fetch(`/api/members?schoolId=${school.id}&limit=10000`)
       const data = await response.json()
       
       if (data.error) {
@@ -82,12 +87,6 @@ export default function Home() {
         setMembers([])
       } else if (Array.isArray(data)) {
         console.log('Frontend Debug - Members loaded:', data.length)
-        const winterMembers = data.filter(member => member.name.toLowerCase().includes('winter'))
-        if (winterMembers.length > 0) {
-          console.log('Frontend Debug - Winter members found:', winterMembers.map(m => m.name))
-        } else {
-          console.log('Frontend Debug - No Winter members in API response')
-        }
         setMembers(data)
       } else {
         console.error('Unexpected data format:', data)
@@ -101,6 +100,62 @@ export default function Home() {
       setLoading(false)
     }
   }
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (term: string) => {
+      if (!selectedSchool || term.trim().length < 2) {
+        setSearchResults([])
+        setIsSearching(false)
+        return
+      }
+
+      setIsSearching(true)
+      try {
+        const response = await fetch(`/api/members?schoolId=${selectedSchool.id}&search=${encodeURIComponent(term)}&limit=1000`)
+        const data = await response.json()
+        
+        if (data.error) {
+          console.error('Search API Error:', data.error)
+          setSearchResults([])
+        } else if (Array.isArray(data)) {
+          console.log('Search Debug - Search results:', data.length)
+          setSearchResults(data)
+        } else {
+          console.error('Unexpected search data format:', data)
+          setSearchResults([])
+        }
+      } catch (error) {
+        console.error('Error searching members:', error)
+        setSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300),
+    [selectedSchool]
+  )
+
+  // Debounce utility function
+  function debounce<T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): (...args: Parameters<T>) => void {
+    let timeout: NodeJS.Timeout
+    return (...args: Parameters<T>) => {
+      clearTimeout(timeout)
+      timeout = setTimeout(() => func(...args), wait)
+    }
+  }
+
+  // Handle search term changes
+  useEffect(() => {
+    if (searchTerm.trim().length >= 2) {
+      debouncedSearch(searchTerm)
+    } else {
+      setSearchResults([])
+      setIsSearching(false)
+    }
+  }, [searchTerm, debouncedSearch])
 
   const handleMemberSelect = (member: Member) => {
     // If clicking the same member that's already selected, deselect it
@@ -117,11 +172,10 @@ export default function Home() {
     }
   }
 
+  // Use search results when searching, otherwise show all members
   const filteredMembers = searchTerm.trim() === '' 
-    ? [] 
-    : members.filter(member =>
-        member.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    ? members 
+    : searchResults
 
   const filteredSchools = schoolSearchTerm.trim() === '' 
     ? schools 
@@ -288,12 +342,34 @@ export default function Home() {
                       />
                     </div>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {filteredMembers.length > 0 && (
+                      {/* Search status */}
+                      {searchTerm.trim() !== '' && (
+                        <div className="mb-3 text-center">
+                          {isSearching ? (
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                              <p className="text-sm text-gray-600">Searching...</p>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-600">
+                              {searchResults.length > 0 
+                                ? `Found ${searchResults.length} result${searchResults.length === 1 ? '' : 's'} for "${searchTerm}"`
+                                : `No results found for "${searchTerm}"`
+                              }
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Show all members when not searching */}
+                      {searchTerm.trim() === '' && members.length > 0 && (
                         <p className="text-sm text-gray-600 mb-3 text-center">
-                          Click on your name to select it:
+                          Showing first {members.length} members. Type at least 2 characters to search for your name:
                         </p>
                       )}
-                      {filteredMembers.map((member) => (
+
+                      {/* Member list */}
+                      {filteredMembers.length > 0 && filteredMembers.map((member) => (
                         <button
                           key={member.id}
                           onClick={() => handleMemberSelect(member)}

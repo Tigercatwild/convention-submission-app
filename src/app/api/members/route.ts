@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// GET /api/members - Get members (optionally filtered by school)
+// GET /api/members - Get members (optionally filtered by school and search term)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
+    const searchTerm = searchParams.get('search')
+    const limit = parseInt(searchParams.get('limit') || '50000')
 
     let query = supabase
       .from('members')
@@ -21,10 +23,15 @@ export async function GET(request: NextRequest) {
         )
       `)
       .order('name')
-      .limit(50000) // Very high limit to ensure we get all records - updated
+      .limit(limit)
 
     if (schoolId) {
       query = query.eq('school_id', schoolId)
+    }
+
+    // Add server-side search if search term is provided
+    if (searchTerm && searchTerm.trim() !== '') {
+      query = query.ilike('name', `%${searchTerm.trim()}%`)
     }
 
     const { data, error } = await query
@@ -33,20 +40,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Debug logging for Winter Cayman issue
+    // Debug logging
     if (schoolId) {
       console.log(`API Debug - School ID: ${schoolId}`)
-      console.log(`API Debug - Query limit set to: 10000`)
+      console.log(`API Debug - Search term: ${searchTerm || 'none'}`)
+      console.log(`API Debug - Query limit: ${limit}`)
       console.log(`API Debug - Total members returned: ${data?.length || 0}`)
       if (data && data.length > 0) {
-        const winterMembers = data.filter(member => member.name.toLowerCase().includes('winter'))
-        console.log(`API Debug - Winter members found: ${winterMembers.length}`)
-        if (winterMembers.length > 0) {
-          console.log('API Debug - Winter member names:', winterMembers.map(m => m.name))
-        }
         // Check if we hit the limit
-        if (data.length >= 10000) {
-          console.log('API Debug - WARNING: Hit 10,000 member limit - there may be more members!')
+        if (data.length >= limit) {
+          console.log(`API Debug - WARNING: Hit ${limit} member limit - there may be more members!`)
         }
         // Show first few member names for debugging
         console.log('API Debug - First 5 member names:', data.slice(0, 5).map(m => m.name))
