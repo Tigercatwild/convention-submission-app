@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Organization, School, Member } from '@/lib/supabase'
 
 export default function Home() {
@@ -133,19 +133,17 @@ export default function Home() {
   }, [selectedSchool])
 
   // Debounced search function using a timeout approach
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   const debouncedSearch = useCallback((term: string) => {
-    if (searchTimeout) {
-      clearTimeout(searchTimeout)
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
     }
     
-    const timeout = setTimeout(() => {
+    searchTimeoutRef.current = setTimeout(() => {
       performSearch(term)
     }, 300)
-    
-    setSearchTimeout(timeout)
-  }, [performSearch, searchTimeout])
+  }, [performSearch])
 
   // Handle search term changes
   useEffect(() => {
@@ -156,6 +154,15 @@ export default function Home() {
       setIsSearching(false)
     }
   }, [searchTerm, debouncedSearch])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleMemberSelect = (member: Member) => {
     // If clicking the same member that's already selected, deselect it
